@@ -7,24 +7,30 @@ import {
     Flex,
     FormControl,
     Heading,
-    Paragraph, Text,
+    Paragraph,
+    Text,
     TextLink
 } from '@contentful/f36-components'
 import {SidebarExtensionSDK} from '@contentful/app-sdk'
 import {useSDK} from '@contentful/react-apps-toolkit'
 
 const Sidebar = () => {
-    type TranslationDataObject = {
+    type LanguageData = {
         "languageCode": string,
         "languageName": string,
-        "submitted": boolean,
-        "processing": boolean
-        "completed": boolean
+        "submitted": number | null,
+        "processing": number | null
+        "completed": number | null
     }
+
+    interface MemsourceObject {
+        "languageData": LanguageData[]
+    }
+
     const availableLanguages: { languageCode: string; languageName: string }[] = []
 
     const sdk = useSDK<SidebarExtensionSDK>()
-    const [translationData, setTranslationData] = useState(loadTranslationDataObject())
+    const [languageData, setLanguageData] = useState(loadLanguageData())
     const [selectedLanguages, setSelectedLanguages] = useState(loadSelectedLanguages())
 
     useEffect(() => {
@@ -33,7 +39,7 @@ const Sidebar = () => {
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setTranslationData(loadTranslationDataObject())
+            setLanguageData(loadLanguageData())
         }, 1000)
 
         return () => clearInterval(interval)
@@ -42,7 +48,7 @@ const Sidebar = () => {
     function loadSelectedLanguages() {
         const languages: string[] = []
 
-        translationData.forEach(language => {
+        languageData.forEach(language => {
             if (isLanguageAtAPC(language)) {
                 languages.push(language.languageCode)
             }
@@ -51,7 +57,7 @@ const Sidebar = () => {
         return languages
     }
 
-    function isLanguageAtAPC(language: TranslationDataObject) {
+    function isLanguageAtAPC(language: LanguageData) {
         return language.submitted || language.processing || language.completed
     }
 
@@ -59,17 +65,20 @@ const Sidebar = () => {
         return anySubmitted() || anyProcessing() || anyCompleted()
     }
 
-    function loadTranslationDataObject(): TranslationDataObject[] {
+    function loadLanguageData(): LanguageData[] {
 
         if (availableLanguages.length === 0) {
             loadTargetLanguages()
         }
 
         if (sdk.entry.fields.memsource.getValue()) {
-            return sdk.entry.fields.memsource.getValue()
+            const memsourceObject: MemsourceObject = sdk.entry.fields.memsource.getValue()
+            if (memsourceObject.languageData) {
+                return memsourceObject.languageData
+            }
         }
 
-        return prepareTranslationDataObject()
+        return prepareLanguageDataObject()
     }
 
     function loadTargetLanguages() {
@@ -85,20 +94,20 @@ const Sidebar = () => {
         })
     }
 
-    function prepareTranslationDataObject(): TranslationDataObject[] {
-        const translationData: TranslationDataObject[] = []
+    function prepareLanguageDataObject(): LanguageData[] {
+        const languageData: LanguageData[] = []
 
         availableLanguages.forEach(language => {
-            translationData.push({
+            languageData.push({
                 "languageCode": language.languageCode,
                 "languageName": language.languageName,
-                "submitted": false,
-                "processing": false,
-                "completed": false
+                "submitted": null,
+                "processing": null,
+                "completed": null
             })
         })
 
-        return translationData
+        return languageData
     }
 
     const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
@@ -113,50 +122,59 @@ const Sidebar = () => {
     };
 
     const handleSubmit = (): void => {
-        const newTranslationData = translationData.map(language => {
+        const newLanguageData = languageData.map(language => {
             if (selectedLanguages.includes(language.languageCode)) {
                 return {
                     ...language,
-                    submitted: true
+                    submitted: Math.floor(Date.now() / 1000)
                 }
             }
 
             return language
         })
 
-        setTranslationData(newTranslationData)
 
-        sdk.entry.fields.memsource.setValue(newTranslationData).catch(err => console.log('Error setting memsource object', err))
+        setLanguageData(newLanguageData)
+
+        const memsourceObject: MemsourceObject = {
+            "languageData": newLanguageData
+        }
+
+        sdk.entry.fields.memsource.setValue(memsourceObject).catch(err => console.log('Error setting memsource object', err))
     };
 
     const handleCancel = (): void => {
 
         setSelectedLanguages([])
 
-        const newTranslationData = translationData.map(language => {
+        const newLanguageData = languageData.map(language => {
             return {
                 ...language,
-                submitted: false
+                submitted: null
             }
         })
 
-        setTranslationData(newTranslationData)
+        setLanguageData(newLanguageData)
 
-        sdk.entry.fields.memsource.setValue(newTranslationData).catch(err => console.log('Error setting memsource object', err))
+        const memsourceObject: MemsourceObject = {
+            "languageData": newLanguageData
+        }
+
+        sdk.entry.fields.memsource.setValue(memsourceObject).catch(err => console.log('Error setting memsource object', err))
     };
 
     const handleReset = (): void => {
 
         setSelectedLanguages([])
 
-        const newTranslationData = translationData.map(language => {
+        const newTranslationData = languageData.map(language => {
             return {
                 ...language,
-                completed: false
+                completed: null
             }
         })
 
-        setTranslationData(newTranslationData)
+        setLanguageData(newTranslationData)
 
         sdk.entry.fields.memsource.setValue(newTranslationData).catch(console.error)
     };
@@ -169,13 +187,13 @@ const Sidebar = () => {
         setSelectedLanguages([])
     }
 
-    const anySubmitted = (): boolean => translationData.some(language => language.submitted);
+    const anySubmitted = (): boolean => languageData.some(language => language.submitted);
 
-    const anyProcessing = (): boolean => translationData.some(language => language.processing);
+    const anyProcessing = (): boolean => languageData.some(language => language.processing);
 
-    const anyCompleted = (): boolean => translationData.some(language => language.completed);
+    const anyCompleted = (): boolean => languageData.some(language => language.completed);
 
-    const badgeStates = (language: TranslationDataObject): JSX.Element | null => {
+    const badgeStates = (language: LanguageData): JSX.Element | null => {
         if (language.completed) {
             return <Badge variant="positive">Completed</Badge>
         } else if (language.processing) {
@@ -287,7 +305,7 @@ const Sidebar = () => {
 					</Box>
                 }
 
-                {translationData.map((language, index) => {
+                {languageData.map((language, index) => {
                     return (
                         <Box paddingTop="spacingXs"
                              key={index}>
