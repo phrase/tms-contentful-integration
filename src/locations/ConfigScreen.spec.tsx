@@ -17,7 +17,7 @@ describe('Config Screen component', () => {
             await mockSdk.app.onConfigure.mock.calls[0][0]();
         })
 
-        expect(getByText('Choose where you want your Memsource app installed.')).toBeInTheDocument();
+        expect(getByText('Choose where you want your Phrase TMS app installed.')).toBeInTheDocument();
 
         expect(getByText('Content types')).toBeInTheDocument();
 

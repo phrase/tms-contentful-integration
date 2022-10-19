@@ -1,4 +1,4 @@
-const mockSdk: any = {
+let mockSdk: any = {
     app: {
         onConfigure: jest.fn(),
         getParameters: jest.fn().mockReturnValueOnce({}),
@@ -10,14 +10,19 @@ const mockSdk: any = {
     },
     entry: {
         fields: {
-            getValue: jest.fn(),
+            phrase: {
+                getValue: () => ({
+                    languageData: []
+                }),
+                setValue: jest.fn(),
+            }
         }
     },
     locales: {
-        available: ['en-US'],
+        available: ['fr', 'de', 'it', 'cs'],
         default: 'en-US',
-        names: {'en-US': 'English (United States)'},
-    },
+        names: {'fr': 'French', 'de': 'German', 'it': 'Italian', 'cs': 'Czech'},
+    }
 };
 
 export {mockSdk};
